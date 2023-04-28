@@ -106,6 +106,7 @@ public class BaseController {
                 Bundle bundle = new Bundle();
                 Request req = new Request(requestBody, apiAction);
                 HCXIntegrator hcxIntegrator = hcxIntegratorService.getHCXIntegrator(req.getRecipientCode());
+                System.out.println("----------configmap-------------" + hcxIntegrator.getUsername() + hcxIntegrator.getPassword());
                 if (COVERAGE_ELIGIBILITY_ONCHECK.equalsIgnoreCase(onApiAction)) {
                     boolean result = hcxIntegrator.processIncoming(JSONUtils.serialize(pay), Operations.COVERAGE_ELIGIBILITY_CHECK,output);
                     if(!result){
