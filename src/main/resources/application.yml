@@ -55,21 +55,20 @@ redirect:
 
 #hcx base url
 hcx_application:
-  url: ${base_url:http://staging-hcx.swasth.app}
+  url: ${hcx_gateway_url:http://dev-hcx.swasth.app}
   api_version: ${version:v0.7}
   token_url: ${auth_url:${hcx_application.url}/auth/realms/swasth-health-claim-exchange/protocol/openid-connect/token}
-  registry_url: ${registry:http://staging-hcx.swasth.app/api/v0.7/participant/search}
+  registry_url: ${registry:${hcx_application.url}/api/v0.7/participant/search}
 
 
-autoresponse: ${auto_response:false}
+autoresponse: ${auto_response:true}
 
 request_list:
   default_limit: ${request_list_default_limit:100}
   default_latest_data_by_day: ${request_list_default_latest_data_by_day:2}
 
 mock_payer:
-  private_key: ${mock_payer_private_key:https://raw.githubusercontent.com/Swasth-Digital-Health-Foundation/hcx-platform/sprint-29/demo-app/server/resources/keys/x509-private-key.pem}
-  username: ${mock_payer_username:swasth_mock_payer@swasthapp.org}
+  private_key: ${mock_payer_private_key:https://raw.githubusercontent.com/Swasth-Digital-Health-Foundation/hcx-platform/sprint-27/hcx-apis/src/test/resources/examples/x509-private-key.pem}
+  username: ${mock_payer_username:testprovider1@apollo.com}
   password: ${mock_payer_password:Opensaber@123}
-  participant_code: ${mock_payer_participant_code:1-29482df3-e875-45ef-a4e9-592b6f565782}
-
+  participant_code: ${mock_payer_participant_code:testprovider1.apollo@swasth-hcx-dev}
