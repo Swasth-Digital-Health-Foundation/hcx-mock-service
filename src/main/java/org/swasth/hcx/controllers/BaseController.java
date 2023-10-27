@@ -278,7 +278,7 @@ public class BaseController {
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("error   " + e);
-            return exceptionHandler(response, e);
+            return exceptionHandler(response, e);    
         }
     }
 
