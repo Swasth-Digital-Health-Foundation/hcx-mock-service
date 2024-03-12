@@ -160,9 +160,11 @@ public class BaseController {
                         replaceResourceInBundleEntry(bundle, "https://ig.hcxprotocol.io/v0.7.1/StructureDefinition-CoverageEligibilityResponseBundle.html", CoverageEligibilityRequest.class, new Bundle.BundleEntryComponent().setFullUrl(covRes.getResourceType() + "/" + covRes.getId().toString().replace("#", "")).setResource(covRes));
                         System.out.println("bundle reply " + parser.encodeResourceToString(bundle));
                         //sending the on action call
+                        System.out.println("The output will be  ------" + output);
                         sendResponse(apiAction, parser.encodeResourceToString(bundle), (String) output.get("fhirPayload"), Operations.COVERAGE_ELIGIBILITY_ON_CHECK, String.valueOf(requestBody.get("payload")), "response.complete", outputOfOnAction);
                     } else {
                         System.out.println("The output will be  ------" + output);
+                        updateFailedRequests(JSONUtils.serialize(output), request.getApiCallId());
                         onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/coverageeligibility/on_check");
                     }
                 }
@@ -180,9 +182,11 @@ public class BaseController {
                         claimRes.setPatient(new Reference("Patient/RVH1003"));
                         replaceResourceInBundleEntry(bundle, "https://ig.hcxprotocol.io/v0.7.1/StructureDefinition-ClaimResponseBundle.html", Claim.class, new Bundle.BundleEntryComponent().setFullUrl(claimRes.getResourceType() + "/" + claimRes.getId().toString().replace("#", "")).setResource(claimRes));
                         System.out.println("bundle reply " + parser.encodeResourceToString(bundle));
+                        System.out.println("The output will be  ------" + output);
                         sendResponse(apiAction, parser.encodeResourceToString(bundle), (String) output.get("fhirPayload"), Operations.CLAIM_ON_SUBMIT, String.valueOf(requestBody.get("payload")), "response.complete", outputOfOnAction);
                     } else {
                         System.out.println("The output will be  ------" + output);
+                        updateFailedRequests(JSONUtils.serialize(output), request.getApiCallId());
                         onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/claim/on_submit");
                     }
                 }
@@ -202,6 +206,7 @@ public class BaseController {
                         sendResponse(apiAction, parser.encodeResourceToString(bundle), (String) output.get("fhirPayload"), Operations.PRE_AUTH_ON_SUBMIT, String.valueOf(requestBody.get("payload")), "response.complete", outputOfOnAction);
                     } else {
                         System.out.println("The output will be  ------" + output);
+                        updateFailedRequests(JSONUtils.serialize(output), request.getApiCallId());
                         onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/preauth/on_submit");
                     }
                 }
@@ -241,6 +246,11 @@ public class BaseController {
                 }
             }
         }
+    }
+
+    public void updateFailedRequests(String errorMessage, String requestId) throws ClientException {
+        String query = String.format("UPDATE %s SET error_message='%s',updated_on=%d ,type='failed' WHERE request_id= '%s'", table, errorMessage, System.currentTimeMillis(), requestId);
+        postgresService.execute(query);
     }
 
     private void sendResponse(String apiAction, String respfhir, String reqFhir, Operations operation, String actionJwe, String onActionStatus, Map<String, Object> output) throws Exception {
