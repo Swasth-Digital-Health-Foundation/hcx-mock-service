@@ -103,9 +103,7 @@ public class BaseController {
         return response;
     }
 
-
     protected void replaceResourceInBundleEntry(Bundle bundle, String bundleURL, Class matchClass, Bundle.BundleEntryComponent bundleEntry) {
-
         //updating the meta
         Meta meta = new Meta();
         meta.getProfile().add(new CanonicalType(bundleURL));
