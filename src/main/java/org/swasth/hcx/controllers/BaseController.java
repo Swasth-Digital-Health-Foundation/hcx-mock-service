@@ -120,13 +120,13 @@ public class BaseController {
         }
     }
 
-    protected void validateErrorsAndSendResponse(Map<String, Object> output, String url) throws Exception {
+    protected void validateErrorsAndSendResponse(Map<String, Object> output, String url , Request req) throws Exception {
         Map<String, Object> errorObj = (Map<String, Object>) output.get("responseObj");
         System.out.println("Error occured during decryption : " + errorObj.get("error"));
         ObjectMapper mapper = new ObjectMapper();
         Map<String, String> map = mapper.readValue((String) errorObj.get("error"), Map.class);
         System.out.println("Error map is here \n" + map.get("code") + "\n" + (String) map.get("message"));
-        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.valueOf(map.get("code")), map.get("message"), null), url);
+        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.valueOf(map.get("code")), map.get("message"), null), url, req);
     }
 
     protected void processAndValidate(String onApiAction, Request request, Map<String, Object> requestBody, String apiAction) throws Exception {
@@ -147,7 +147,7 @@ public class BaseController {
                 boolean result = hcxIntegrator.processIncoming(JSONUtils.serialize(pay), Operations.COVERAGE_ELIGIBILITY_CHECK, output);
                 if (!result) {
                     System.out.println("Error while processing incoming request: " + output);
-                    validateErrorsAndSendResponse(output, "/coverageeligibility/on_check");
+                    validateErrorsAndSendResponse(output, "/coverageeligibility/on_check", req);
                 } else {
                     System.out.println("output map after decryption  coverageEligibility" + output.get("fhirPayload"));
                     //processing the decrypted incoming bundle
@@ -158,18 +158,15 @@ public class BaseController {
                         replaceResourceInBundleEntry(bundle, "https://ig.hcxprotocol.io/v0.7.1/StructureDefinition-CoverageEligibilityResponseBundle.html", CoverageEligibilityRequest.class, new Bundle.BundleEntryComponent().setFullUrl(covRes.getResourceType() + "/" + covRes.getId().toString().replace("#", "")).setResource(covRes));
                         System.out.println("bundle reply " + parser.encodeResourceToString(bundle));
                         //sending the on action call
-                        System.out.println("The output will be  ------" + output);
                         sendResponse(apiAction, parser.encodeResourceToString(bundle), (String) output.get("fhirPayload"), Operations.COVERAGE_ELIGIBILITY_ON_CHECK, String.valueOf(requestBody.get("payload")), "response.complete", outputOfOnAction);
                     } else {
-                        System.out.println("The output will be  ------" + output);
-                        updateFailedRequests(JSONUtils.serialize(output), request.getApiCallId());
-                        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/coverageeligibility/on_check");
+                        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/coverageeligibility/on_check", req);
                     }
                 }
             } else if (CLAIM_SUBMIT.equalsIgnoreCase(apiAction)) {
                 boolean result = hcxIntegrator.processIncoming(JSONUtils.serialize(pay), Operations.CLAIM_SUBMIT, output);
                 if (!result) {
-                    validateErrorsAndSendResponse(output, "/claim/on_submit");
+                    validateErrorsAndSendResponse(output, "/claim/on_submit", req);
                 } else {
                     //processing the decrypted incoming bundle
                     bundle = parser.parseResource(Bundle.class, (String) output.get("fhirPayload"));
@@ -185,13 +182,13 @@ public class BaseController {
                     } else {
                         System.out.println("The output will be  ------" + output);
                         updateFailedRequests(JSONUtils.serialize(output), request.getApiCallId());
-                        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/claim/on_submit");
+                        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/claim/on_submit", req);
                     }
                 }
             } else if (PRE_AUTH_SUBMIT.equalsIgnoreCase(apiAction)) {
                 boolean result = hcxIntegrator.processIncoming(JSONUtils.serialize(pay), Operations.PRE_AUTH_SUBMIT, output);
                 if (!result) {
-                    validateErrorsAndSendResponse(output, "/preauth/on_submit");
+                    validateErrorsAndSendResponse(output, "/preauth/on_submit", req);
                 } else {
                     System.out.println("output map after decryption preauth " + output);
                     //processing the decrypted incoming bundle
@@ -205,7 +202,7 @@ public class BaseController {
                     } else {
                         System.out.println("The output will be  ------" + output);
                         updateFailedRequests(JSONUtils.serialize(output), request.getApiCallId());
-                        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/preauth/on_submit");
+                        onActionCall.sendOnActionErrorProtocolResponse(output, new ResponseError(ErrorCodes.ERR_INVALID_DOMAIN_PAYLOAD, "Payload does not contain a claim bundle", null), "/preauth/on_submit", req);
                     }
                 }
             } else if (COMMUNICATION_REQUEST.equalsIgnoreCase(apiAction)) {

@@ -73,6 +73,8 @@ public class PayerController extends BaseController {
                 map.put("account_number", resultSet.getString("account_number"));
                 map.put("ifsc_code", resultSet.getString("ifsc_code"));
                 map.put("app", resultSet.getString("app"));
+                map.put("error_message", resultSet.getString("error_message"));
+                map.put("type", resultSet.getString("type"));
                 result.add(map);
             }
             resp.put(type, result);

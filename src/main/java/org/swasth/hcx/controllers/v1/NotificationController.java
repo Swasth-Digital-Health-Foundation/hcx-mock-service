@@ -69,9 +69,9 @@ public class NotificationController extends BaseController {
             if (requestBody.containsKey("participant_role") && !StringUtils.isEmpty((String) requestBody.get("participant_role"))) {
                 detailsParticipantRole = redisService.get((String) requestBody.get("participant_role"));
             }
-//            if (requestBody.containsKey("participant_code") && !StringUtils.isEmpty((String) requestBody.get("participant_code"))) {
-//                detailsParticipantCode = redisService.get((String) requestBody.get("participant_code"));
-//            }
+            if (requestBody.containsKey("participant_code") && !StringUtils.isEmpty((String) requestBody.get("participant_code"))) {
+                detailsParticipantCode = redisService.get((String) requestBody.get("participant_code"));
+            }
             List<Map<String, Object>> combinedDetails = new ArrayList<>();
             combinedDetails.addAll(detailsParticipantRole);
             combinedDetails.addAll(detailsParticipantCode);

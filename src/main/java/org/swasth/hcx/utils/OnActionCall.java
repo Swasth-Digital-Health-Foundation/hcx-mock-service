@@ -18,8 +18,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.swasth.hcx.dto.Request;
 import org.swasth.hcx.dto.ResponseError;
+import org.swasth.hcx.exception.ClientException;
 import org.swasth.hcx.service.HcxIntegratorService;
+import org.swasth.hcx.service.PayerService;
 
 import javax.annotation.PostConstruct;
 import java.io.InputStream;
@@ -32,7 +35,8 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static org.swasth.hcx.utils.Constants.PARTIAL_STATUS;
+import static org.swasth.hcx.utils.Constants.*;
+import static org.swasth.hcx.utils.Constants.FAILED;
 
 
 @Component
@@ -43,6 +47,8 @@ public class OnActionCall {
 
     private String onCheckPayloadType;
 
+    @Autowired
+    private PayerService payerService;
     @Autowired
     protected HcxIntegratorService hcxIntegratorService;
 
@@ -131,8 +137,9 @@ public class OnActionCall {
         System.out.println("protocol http response: " + resArray);
     }
 
-    public void sendOnActionErrorProtocolResponse(Map<String, Object> actionJwe, ResponseError error, String url) throws Exception{
-        System.out.println("We have come here: " +  error.getCode());
+    public void sendOnActionErrorProtocolResponse(Map<String, Object> actionJwe, ResponseError error, String url, Request request) throws Exception {
+        System.out.println("We have come here: " + error.getCode());
+        payerService.createFailedRequests(request, error.getMessage());
         Map<String, Object> responseObj = new HashMap<>();
         Map<String, Object> headers = (Map<String, Object>) actionJwe.get(Constants.HEADERS);
         responseObj.put(Constants.API_CALL_ID, UUID.randomUUID().toString());
