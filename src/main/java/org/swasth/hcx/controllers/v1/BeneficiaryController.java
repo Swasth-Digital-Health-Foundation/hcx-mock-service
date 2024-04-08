@@ -15,10 +15,8 @@ import org.swasth.hcx.dto.Response;
 import org.swasth.hcx.exception.ClientException;
 import org.swasth.hcx.service.BeneficiaryService;
 import org.swasth.hcx.service.CloudStorageClient;
-import org.swasth.hcx.service.GenerateOutgoingRequest;
 import org.swasth.hcx.utils.Constants;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -29,8 +27,6 @@ import static org.swasth.hcx.utils.Constants.*;
 public class BeneficiaryController extends BaseController {
 
     private static final Logger logger = LoggerFactory.getLogger(BeneficiaryController.class);
-    @Autowired
-    private GenerateOutgoingRequest outgoingRequest;
 
     @Autowired
     private CloudStorageClient cloudStorageClient;
@@ -38,31 +34,6 @@ public class BeneficiaryController extends BaseController {
     private BeneficiaryService beneficiaryService;
     @Value("${phone.beneficiary-register}")
     private String beneficiaryRegisterContent;
-
-    @PostMapping(CREATE_COVERAGEELIGIBILITY_REQUEST)
-    public ResponseEntity<Object> createCoverageEligibility(@RequestHeader HttpHeaders headers, @RequestBody Map<String, Object> requestBody) throws Exception {
-        return outgoingRequest.createCoverageEligibilityRequest(requestBody,Operations.COVERAGE_ELIGIBILITY_CHECK);
-    }
-
-    @PostMapping(CREATE_CLAIM_SUBMIT)
-    public ResponseEntity<Object> createClaimSubmit(@RequestBody Map<String, Object> requestBody) {
-        return outgoingRequest.createClaimRequest(requestBody, Operations.CLAIM_SUBMIT);
-    }
-
-    @PostMapping(CREATE_PRE_AUTH_SUBMIT)
-    public ResponseEntity<Object> createPreAuthSubmit(@RequestBody Map<String, Object> requestBody) {
-        return outgoingRequest.createClaimRequest(requestBody, Operations.PRE_AUTH_SUBMIT);
-    }
-
-    @PostMapping(CREATE_COMMUNICATION_REQUEST)
-    public ResponseEntity<Object> createCommunication(@RequestBody Map<String, Object> requestBody) {
-        return outgoingRequest.createCommunicationRequest(requestBody, Operations.COMMUNICATION_REQUEST);
-    }
-
-    @PostMapping(CREATE_COMMUNICATION_ON_REQUEST)
-    public ResponseEntity<Object> createOnCommunication(@RequestBody Map<String, Object> requestBody) throws Exception {
-        return outgoingRequest.createCommunicationOnRequest(requestBody);
-    }
 
     @PostMapping(BSP_REQUEST_LIST)
     public ResponseEntity<Object> requestList(@RequestBody Map<String, Object> requestBody) {
@@ -99,16 +70,6 @@ public class BeneficiaryController extends BaseController {
     public ResponseEntity<Object> verifyOTP(@RequestBody Map<String, Object> requestBody) {
         try {
             return beneficiaryService.verifyOTP(requestBody);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @PostMapping(UPLOAD_DOCUMENTS)
-    public ResponseEntity<Object> uploadDocuments(@RequestParam("file") List<MultipartFile> files, @RequestParam("mobile") String mobile) {
-        try {
-            List<Map<String, Object>> responses = beneficiaryService.getDocumentUrls(files, mobile);
-            return ResponseEntity.ok(responses);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -118,19 +118,6 @@ public class BeneficiaryService {
         return response;
     }
 
-    public Map<String, Object> getPayloadMap(String requestID) throws ClientException, SQLException {
-        String searchQuery = String.format("SELECT * FROM %s WHERE request_id = '%s'", payorDataTable, requestID);
-        ResultSet resultSet = postgresService.executeQuery(searchQuery);
-        if (!resultSet.next()) {
-            throw new ClientException("Request does not exist in the database");
-        }
-        Map<String, Object> payloadMap = new HashMap<>();
-        payloadMap.put("request_fhir", resultSet.getString("request_fhir"));
-        payloadMap.put("correlation_id", resultSet.getString("correlation_id"));
-        payloadMap.put("workflow_id", resultSet.getString("workflow_id"));
-        return payloadMap;
-    }
-
 
     public ResponseEntity<Object> getRequestByMobileAndSender(String filterType, String filterValue, String app) throws InterruptedException {
         logger.info("Searching the request list for type  {}  and value {} " , filterType , filterValue);
@@ -215,40 +202,6 @@ public class BeneficiaryService {
         responseMap.put("mobile", searchResultSet.getString("mobile"));
         responseMap.put("patientName", searchResultSet.getString("patient_name"));
         return responseMap;
-    }
-
-    private String getType(String action) {
-        if (Constants.CLAIM.equalsIgnoreCase(action)) {
-            return Constants.CLAIM;
-        } else {
-            return Constants.PRE_AUTH;
-        }
-    }
-
-    public List<Map<String, Object>> getDocumentUrls(List<MultipartFile> files, String mobile) throws ClientException, SQLException, IOException {
-        if (isRateLimited()) {
-            throw new ClientException("Rate limit exceeded. Please try again later.");
-        }
-        String query = String.format("SELECT bsp_reference_id FROM %s WHERE mobile = '%s'", beneficiaryTable, mobile);
-        String beneficiaryReferenceId = "";
-        try (ResultSet resultSet = postgresService.executeQuery(query)) {
-            while (resultSet.next()) {
-                beneficiaryReferenceId = resultSet.getString("bsp_reference_id");
-            }
-        }
-        List<Map<String, Object>> responses = new ArrayList<>();
-        for (MultipartFile file : files) {
-            String fileName = file.getOriginalFilename();
-            String pathToFile = String.format("beneficiary-app/%s/%s", beneficiaryReferenceId, fileName);
-            cloudStorageClient.putObject(bucketName, pathToFile, file);
-            Map<String, Object> response = new HashMap<>();
-            response.put("url", cloudStorageClient.getUrl(bucketName, pathToFile).toString());
-            response.put("reference_id", beneficiaryReferenceId);
-            responses.add(response);
-        }
-        lastOTPSendTime = System.currentTimeMillis();
-        otpSentThisMinute++;
-        return responses;
     }
 
     public Map<String, Object> checkCommunicationRequest(Map<String, Object> requestBody) throws ClientException, SQLException {
