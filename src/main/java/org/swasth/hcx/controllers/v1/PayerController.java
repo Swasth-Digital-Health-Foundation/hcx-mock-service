@@ -42,7 +42,7 @@ public class PayerController extends BaseController {
 
     IParser p = FhirContext.forR4().newJsonParser().setPrettyPrint(true);
 
-    @PostMapping(value = "/payer/request/list")
+    @PostMapping(value = "/request/list")
     public ResponseEntity<Object> requestList(@RequestBody Map<String, Object> requestBody) {
         try {
             String type = (String) requestBody.getOrDefault("type", "");
@@ -91,37 +91,37 @@ public class PayerController extends BaseController {
         }
     }
 
-    @PostMapping(value = "/payer/coverageeligibility/approve")
+    @PostMapping(value = "/coverageeligibility/approve")
     public ResponseEntity<Object> coverageEligibilityApprove(@RequestBody Map<String, Object> requestBody) {
         return review(requestBody,"coverageeligibility", APPROVED);
     }
 
-    @PostMapping(value = "/payer/coverageeligibility/reject")
+    @PostMapping(value = "/coverageeligibility/reject")
     public ResponseEntity<Object> coverageEligibilityReject(@RequestBody Map<String, Object> requestBody) {
         return review(requestBody,"coverageeligibility", REJECTED);
     }
 
-    @PostMapping(value = "/payer/preauth/approve")
+    @PostMapping(value = "/preauth/approve")
     public ResponseEntity<Object> preauthApprove(@RequestBody Map<String, Object> requestBody) {
         return review(requestBody,"preauth", APPROVED);
     }
 
-    @PostMapping(value = "/payer/preauth/reject")
+    @PostMapping(value = "/preauth/reject")
     public ResponseEntity<Object> preauthReject(@RequestBody Map<String, Object> requestBody) {
         return review(requestBody,"preauth", REJECTED);
     }
 
-    @PostMapping(value = "/payer/claim/approve")
+    @PostMapping(value = "/claim/approve")
     public ResponseEntity<Object> claimApprove(@RequestBody Map<String, Object> requestBody) {
         return review(requestBody,"claim", APPROVED);
     }
 
-    @PostMapping(value = "/payer/claim/reject")
+    @PostMapping(value = "/claim/reject")
     public ResponseEntity<Object> claimReject(@RequestBody Map<String, Object> requestBody) {
         return review(requestBody,"claim", REJECTED);
     }
 
-    @PostMapping(value = "/payer/response/update")
+    @PostMapping(value = "/response/update")
     public ResponseEntity<Object> updateResponse(@RequestBody Map<String, Object> requestBody) throws ClientException {
         updateDB((String) requestBody.get("request_id"), (String) requestBody.get("response_fhir"), "response.complete");
         return new ResponseEntity<>(new Response(), HttpStatus.OK);
