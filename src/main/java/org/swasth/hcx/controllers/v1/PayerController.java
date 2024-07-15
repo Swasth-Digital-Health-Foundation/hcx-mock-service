@@ -304,15 +304,14 @@ public class PayerController extends BaseController {
         String bundleString = getApprovedClaimBundle(requestBody, entity, respfhir);
         System.out.println("Approved Response bundle: " + bundleString);
         Bundle parsed = p.parseResource(Bundle.class, bundleString);
-//                        for (Bundle.BundleEntryComponent bundleEntryComponent : parsed.getEntry()) {
-//                            if (Objects.equals(bundleEntryComponent.getResource().getResourceType().toString(), "ClaimResponse")) {
-//                                ClaimResponse claimRes = p.parseResource(ClaimResponse.class, p.encodeResourceToString(bundleEntryComponent.getResource()));
-//                                Long approvedAmount = Long.valueOf((Integer) requestBody.getOrDefault("approved_amount", 0));
-//                                claimRes.getTotal().add(new ClaimResponse.TotalComponent().setCategory(new CodeableConcept(new Coding().setSystem("http://terminology.hl7.org/CodeSystem/adjudication").setCode("benefit"))).setAmount(new Money().setValue(approvedAmount).setCurrency("INR")));
-//                            }
-//                        }
+                        for (Bundle.BundleEntryComponent bundleEntryComponent : parsed.getEntry()) {
+                            if (Objects.equals(bundleEntryComponent.getResource().getResourceType().toString(), "ClaimResponse")) {
+                                ClaimResponse claimRes = p.parseResource(ClaimResponse.class, p.encodeResourceToString(bundleEntryComponent.getResource()));
+                                Long approvedAmount = Long.valueOf((Integer) requestBody.getOrDefault("approved_amount", 0));
+                                claimRes.getTotal().add(new ClaimResponse.TotalComponent().setCategory(new CodeableConcept(new Coding().setSystem("http://terminology.hl7.org/CodeSystem/adjudication").setCode("benefit"))).setAmount(new Money().setValue(approvedAmount).setCurrency("INR")));
+                            }
+                        }
         bundleString = p.encodeResourceToString(parsed);
-        System.out.println("Claim request after creating -----------" + bundleString);
         onActionCall.sendOnAction((String) requestBody.get("recipient_code"), bundleString, action.contains("preauth") ? Operations.PRE_AUTH_ON_SUBMIT : Operations.CLAIM_ON_SUBMIT, actionJwe, "response.complete", output);
     }
 
