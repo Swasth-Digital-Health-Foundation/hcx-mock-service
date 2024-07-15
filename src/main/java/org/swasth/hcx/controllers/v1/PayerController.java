@@ -203,105 +203,124 @@ public class PayerController extends BaseController {
             String id = (String) requestBody.getOrDefault("request_id", "");
             validateStr("request_id", id);
             validateStr("recipient_code", (String) requestBody.getOrDefault("recipient_code", ""));
-            Map<String,Object> output = new HashMap<>();
             if (StringUtils.equals(entity, "coverageeligibility")) {
-                String updateQuery = String.format("UPDATE %s SET status='%s',updated_on=%d WHERE request_id='%s' RETURNING %s,%s",
-                        table, status, System.currentTimeMillis(), id, "raw_payload", "response_fhir");
-                ResultSet resultset = postgres.executeQuery(updateQuery);
-                String respfhir = "";
-                String actionJwe = "";
-                while(resultset.next()){
-                    respfhir = resultset.getString("response_fhir");
-                    actionJwe = resultset.getString("raw_payload");
-                }
-                if(status.equals(APPROVED)){
-                    onActionCall.sendOnAction((String) requestBody.get("recipient_code"), respfhir, Operations.COVERAGE_ELIGIBILITY_ON_CHECK, actionJwe, "response.complete", output);
-                } else {
-                    String bundleString = getCoverageRejectedBundle(respfhir);
-                    System.out.println("Rejected Response bundle: " + bundleString);
-                    onActionCall.sendOnAction((String) requestBody.get("recipient_code"), bundleString, Operations.COVERAGE_ELIGIBILITY_ON_CHECK, actionJwe, "response.complete", output);
-                }
+               coverageeligibilityReview(requestBody,entity,status);
             } else {
-                String type = (String) requestBody.getOrDefault("type", "");
-                String remarks = (String) requestBody.getOrDefault("remarks", "");
-                validateStr("type", type);
-                if (!Constants.PAYOR_APPROVAL_TYPES.contains(type))
-                    throw new ClientException("Invalid type, allowed types are: " + Constants.PAYOR_APPROVAL_TYPES);
-                Map<String, Object> info = new HashMap<>();
-                info.put("status", status);
-                info.put("remarks", remarks);
-                if(StringUtils.equals(APPROVED, status)) {
-                    if(!requestBody.containsKey("approved_amount") || !(requestBody.get("approved_amount") instanceof Integer))
-                        throw new ClientException("Approved amount is mandatory field and should be a number");
-                    info.put("approved_amount", requestBody.getOrDefault("approved_amount", 0));
-                    info.put("account_number", requestBody.getOrDefault("account_number", 0));
-                    info.put("ifsc_code", requestBody.getOrDefault("ifsc_code", ""));
-                }
-                String query = String.format("UPDATE %s SET additional_info = jsonb_set(additional_info::jsonb, '{%s}', '%s'),updated_on = %d WHERE request_id = '%s' RETURNING %s,%s,%s,%s,%s",
-                        table, type, JSONUtils.serialize(info), System.currentTimeMillis(), id, "additional_info", "status", "raw_payload", "response_fhir", "action");
-                ResultSet resultSet = postgres.executeQuery(query);
-                Map<String, Object> addInfo = new HashMap<>();
-                String existingStatus = PENDING;
-                String respfhir = "";
-                String actionJwe = "";
-                String action = "";
-                while (resultSet.next()) {
-                    addInfo.putAll(JSONUtils.deserialize(resultSet.getString("additional_info"), Map.class));
-                    existingStatus = resultSet.getString("status");
-                    respfhir = resultSet.getString("response_fhir");
-                    actionJwe = resultSet.getString("raw_payload");
-                    action = resultSet.getString("action");
-                }
-
-                if (!addInfo.isEmpty()) {
-                    String overallStatus = getStatus(addInfo);
-                    if (!StringUtils.equalsIgnoreCase(overallStatus, existingStatus)) {
-                        String updateQuery = String.format("UPDATE %s SET status = '%s',updated_on = %d WHERE request_id = '%s'"
-                                , table, overallStatus, System.currentTimeMillis(), id);
-                        postgres.execute(updateQuery);
-                    }
-                    if (overallStatus.equals(APPROVED)) {
-                        String bundleString = getApprovedClaimBundle(requestBody, entity, respfhir);
-                        System.out.println("Approved Response bundle: " + bundleString);
-                        Bundle parsed = p.parseResource(Bundle.class, bundleString);
-//                        for (Bundle.BundleEntryComponent bundleEntryComponent : parsed.getEntry()) {
-//                            if (Objects.equals(bundleEntryComponent.getResource().getResourceType().toString(), "ClaimResponse")) {
-//                                ClaimResponse claimRes = p.parseResource(ClaimResponse.class, p.encodeResourceToString(bundleEntryComponent.getResource()));
-//                                Long approvedAmount = Long.valueOf((Integer) requestBody.getOrDefault("approved_amount", 0));
-//                                claimRes.getTotal().add(new ClaimResponse.TotalComponent().setCategory(new CodeableConcept(new Coding().setSystem("http://terminology.hl7.org/CodeSystem/adjudication").setCode("benefit"))).setAmount(new Money().setValue(approvedAmount).setCurrency("INR")));
-//                            }
-//                        }
-                        bundleString = p.encodeResourceToString(parsed);
-                        System.out.println("Claim request after creating -----------" + bundleString);
-                        onActionCall.sendOnAction((String) requestBody.get("recipient_code"), bundleString, action.contains("preauth") ? Operations.PRE_AUTH_ON_SUBMIT : Operations.CLAIM_ON_SUBMIT, actionJwe, "response.complete", output);
-                    } else if (overallStatus.equals(REJECTED)){
-                        String bundleString = getRejectedClaimBundle(entity, type, respfhir);
-                        Bundle parsed = p.parseResource(Bundle.class, bundleString);
-                        for (Bundle.BundleEntryComponent bundleEntryComponent : parsed.getEntry()) {
-                            if(Objects.equals(bundleEntryComponent.getResource().getResourceType().toString(), "ClaimResponse")) {
-                                ClaimResponse claimRes = p.parseResource(ClaimResponse.class, p.encodeResourceToString(bundleEntryComponent.getResource()));
-                                ClaimResponse.NoteComponent note = new ClaimResponse.NoteComponent();
-                                note.setText(remarks);
-                                claimRes.addProcessNote(note);
-                                Long approvedAmount = Long.valueOf((Integer) requestBody.getOrDefault("approved_amount",0));
-                                claimRes.getTotal().add(new ClaimResponse.TotalComponent().setCategory(new CodeableConcept(new Coding().setSystem("http://terminology.hl7.org/CodeSystem/adjudication").setCode("benefit"))).setAmount(new Money().setValue(approvedAmount).setCurrency("INR")));
-                            }
-                        }
-                        System.out.println("Rejected Response bundle: " + bundleString);
-                        bundleString = p.encodeResourceToString(parsed);
-                        onActionCall.sendOnAction((String) requestBody.get("recipient_code"), bundleString, action.contains("preauth") ? Operations.PRE_AUTH_ON_SUBMIT : Operations.CLAIM_ON_SUBMIT, actionJwe, "response.complete", output);
-                    }
-                }
+                getStatusApproveOrReject(requestBody,entity,status);
             }
             Map<String,Object> resp = new HashMap<>();
             resp.put("timestamp", System.currentTimeMillis());
             resp.put("status", Constants.SUCCESSFUL);
             resp.put("reason", "");
-            System.out.println("Process completed :: request id :" + id);
             return new ResponseEntity<>(resp, HttpStatus.OK);
         } catch (Exception e) {
             return exceptionHandler(new Response(), e);
         }
+    }
+
+    private void coverageeligibilityReview(Map<String, Object> requestBody, String entity, String status) throws Exception {
+        String id = (String) requestBody.getOrDefault("request_id", "");
+        Map<String,Object> output = new HashMap<>();
+        String updateQuery = String.format("UPDATE %s SET status='%s',updated_on=%d WHERE request_id='%s' RETURNING %s,%s",
+                table, status, System.currentTimeMillis(), id, "raw_payload", "response_fhir");
+        ResultSet resultset = postgres.executeQuery(updateQuery);
+        String respfhir = "";
+        String actionJwe = "";
+        while(resultset.next()){
+            respfhir = resultset.getString("response_fhir");
+            actionJwe = resultset.getString("raw_payload");
+        }
+        if(status.equals(APPROVED)){
+            onActionCall.sendOnAction((String) requestBody.get("recipient_code"), respfhir, Operations.COVERAGE_ELIGIBILITY_ON_CHECK, actionJwe, "response.complete", output);
+        } else {
+            String bundleString = getCoverageRejectedBundle(respfhir);
+            System.out.println("Rejected Response bundle: " + bundleString);
+            onActionCall.sendOnAction((String) requestBody.get("recipient_code"), bundleString, Operations.COVERAGE_ELIGIBILITY_ON_CHECK, actionJwe, "response.complete", output);
+        }
+    }
+
+    private void getStatusApproveOrReject(Map<String, Object> requestBody, String entity, String status) throws Exception {
+        String id = (String) requestBody.getOrDefault("request_id", "");
+        Map<String,Object> output = new HashMap<>();
+        String type = (String) requestBody.getOrDefault("type", "");
+        String remarks = (String) requestBody.getOrDefault("remarks", "");
+        if (!Constants.PAYOR_APPROVAL_TYPES.contains(type))
+            throw new ClientException("Invalid type, allowed types are: " + Constants.PAYOR_APPROVAL_TYPES);
+        Map<String, Object> info = new HashMap<>();
+        info.put("status", status);
+        info.put("remarks", remarks);
+        if(StringUtils.equals(APPROVED, status)) {
+            approvedStatus(requestBody,info);
+        }
+        String query = String.format("UPDATE %s SET additional_info = jsonb_set(additional_info::jsonb, '{%s}', '%s'),updated_on = %d WHERE request_id = '%s' RETURNING %s,%s,%s,%s,%s",
+                table, type, JSONUtils.serialize(info), System.currentTimeMillis(), id, "additional_info", "status", "raw_payload", "response_fhir", "action");
+        ResultSet resultSet = postgres.executeQuery(query);
+        Map<String, Object> addInfo = new HashMap<>();
+        String existingStatus = PENDING;
+        String respfhir = "";
+        String actionJwe = "";
+        String action = "";
+        while (resultSet.next()) {
+            addInfo.putAll(JSONUtils.deserialize(resultSet.getString("additional_info"), Map.class));
+            existingStatus = resultSet.getString("status");
+            respfhir = resultSet.getString("response_fhir");
+            actionJwe = resultSet.getString("raw_payload");
+            action = resultSet.getString("action");
+        }
+
+        if (!addInfo.isEmpty()) {
+            String overallStatus = getStatus(addInfo);
+            if (!StringUtils.equalsIgnoreCase(overallStatus, existingStatus)) {
+                String updateQuery = String.format("UPDATE %s SET status = '%s',updated_on = %d WHERE request_id = '%s'"
+                        , table, overallStatus, System.currentTimeMillis(), id);
+                postgres.execute(updateQuery);
+            }if (overallStatus.equals(APPROVED)) {
+                overallStatusApproved(entity, respfhir, requestBody, action, output, actionJwe);
+            } else if (overallStatus.equals(REJECTED)){
+                overallStatusReject(entity ,type ,respfhir ,requestBody ,action ,remarks, output, actionJwe);
+            }
+        }
+    }
+
+    private void overallStatusReject(String entity, String type, String respfhir , Map<String ,Object> requestBody, String action, String remarks, Map<String,Object> output, String actionJwe) throws Exception {
+        String bundleString = getRejectedClaimBundle(entity, type, respfhir);
+        Bundle parsed = p.parseResource(Bundle.class, bundleString);
+        for (Bundle.BundleEntryComponent bundleEntryComponent : parsed.getEntry()) {
+            if(Objects.equals(bundleEntryComponent.getResource().getResourceType().toString(), "ClaimResponse")) {
+                ClaimResponse claimRes = p.parseResource(ClaimResponse.class, p.encodeResourceToString(bundleEntryComponent.getResource()));
+                ClaimResponse.NoteComponent note = new ClaimResponse.NoteComponent();
+                note.setText(remarks);
+                claimRes.addProcessNote(note);
+                Long approvedAmount = Long.valueOf((Integer) requestBody.getOrDefault("approved_amount",0));
+                claimRes.getTotal().add(new ClaimResponse.TotalComponent().setCategory(new CodeableConcept(new Coding().setSystem("http://terminology.hl7.org/CodeSystem/adjudication").setCode("benefit"))).setAmount(new Money().setValue(approvedAmount).setCurrency("INR")));
+            }
+        }
+        System.out.println("Rejected Response bundle: " + bundleString);
+        bundleString = p.encodeResourceToString(parsed);
+        onActionCall.sendOnAction((String) requestBody.get("recipient_code"), bundleString, action.contains("preauth") ? Operations.PRE_AUTH_ON_SUBMIT : Operations.CLAIM_ON_SUBMIT, actionJwe, "response.complete", output);
+    }
+
+    private void overallStatusApproved(String entity, String respfhir , Map<String ,Object> requestBody, String action, Map<String,Object> output, String actionJwe) throws Exception {
+        String bundleString = getApprovedClaimBundle(requestBody, entity, respfhir);
+        System.out.println("Approved Response bundle: " + bundleString);
+        Bundle parsed = p.parseResource(Bundle.class, bundleString);
+                        for (Bundle.BundleEntryComponent bundleEntryComponent : parsed.getEntry()) {
+                            if (Objects.equals(bundleEntryComponent.getResource().getResourceType().toString(), "ClaimResponse")) {
+                                ClaimResponse claimRes = p.parseResource(ClaimResponse.class, p.encodeResourceToString(bundleEntryComponent.getResource()));
+                                Long approvedAmount = Long.valueOf((Integer) requestBody.getOrDefault("approved_amount", 0));
+                                claimRes.getTotal().add(new ClaimResponse.TotalComponent().setCategory(new CodeableConcept(new Coding().setSystem("http://terminology.hl7.org/CodeSystem/adjudication").setCode("benefit"))).setAmount(new Money().setValue(approvedAmount).setCurrency("INR")));
+                            }
+                        }
+        bundleString = p.encodeResourceToString(parsed);
+        onActionCall.sendOnAction((String) requestBody.get("recipient_code"), bundleString, action.contains("preauth") ? Operations.PRE_AUTH_ON_SUBMIT : Operations.CLAIM_ON_SUBMIT, actionJwe, "response.complete", output);
+    }
+
+    private void approvedStatus(Map<String,Object> requestBody, Map<String,Object> info) throws ClientException {
+        if(!requestBody.containsKey("approved_amount") || !(requestBody.get("approved_amount") instanceof Integer))
+            throw new ClientException("Approved amount is mandatory field and should be a number");
+        info.put("approved_amount", requestBody.getOrDefault("approved_amount", 0));
+        info.put("account_number", requestBody.getOrDefault("account_number", 0));
+        info.put("ifsc_code", requestBody.getOrDefault("ifsc_code", ""));
     }
 
     private static String getCoverageRejectedBundle(String respfhir) {
